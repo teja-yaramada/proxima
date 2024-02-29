@@ -4,11 +4,17 @@ Payload subsystem for the Proxima project.
 
 # Installations
 
+## Prerequisites
+
 Following is required for the `pylepton`.
 
     sudo apt-get install -y python3-opencv python3-numpy
 
 This installed several native libraries supporting the `opencv` and `numpy` APIs in python3
+
+## Pylepton
+
+    git clone https://github.com/groupgets/pylepton.git -b lepton3-dev
 
 As we aren't installing the pylepton library, setup a symlink to its relative location. For example for access from `proxima` project which is a peer folder to `pylepton` git repository.
 
@@ -18,14 +24,34 @@ The above command will establish `pylepton` project usable from python code as `
 
     lrwxrwxrwx 1 pi pi  20 Feb 26 16:41 pylepton -> ../pylepton/pylepton
 
+## LSM6DS Library
+
+Clone the software
+
+    git clone https://github.com/adafruit/Adafruit_CircuitPython_LSM6DS.git
+
+Below install fetches the circuitpython drivers:
+   
+    sudo pip3 install adafruit-circuitpython-lsm6ds --break-system-packages
+
+From proxima source folder, set up a symlink to the relative location of LSM6DS python library.
+
+    pi@raspberrypi:~/payload/proxima $ ln -s ../Adafruit_CircuitPython_LSM6DS/adafruit_lsm6ds ./
+
+Now the long listing of the folder should show the sym-links as below:
+
+    lrwxrwxrwx 1 pi pi     48 Feb 29 01:19 adafruit_lsm6ds -> ../Adafruit_CircuitPython_LSM6DS/adafruit_lsm6ds
+    lrwxrwxrwx 1 pi pi     20 Feb 26 16:41 pylepton -> ../pylepton/pylepton
 
 # Lepton module
 
-Lepton FLIR module interfaces with the RPI board over SPI bus.
+Lepton FLIR module interfaces with the RPI board over SPI and I2C bus.
 
 ## References
 
 1. [Youtube video from GroupGets](https://www.youtube.com/watch?v=Gc3fSmK9eco&ab_channel=GroupGets)
+2. [Module purchased from GroupGets] (https://groupgets.com/products/flir-lepton-3-5)
+3. 
 
 ## I2C interface
 
@@ -96,5 +122,12 @@ Similarly on the `i2c-20` and `i2c-21`.
 
 This is a System-in-Package (SIP), a custom package, named [RP3A0](https://www.raspberrypi.com/documentation/computers/processors.html#rp3a0). The main Silicon inside, the real workhorse, is [BCM2837](https://www.raspberrypi.com/documentation/computers/processors.html#bcm2837). This is a 4 core Cortex-A53 CPU, each can run upto 1.2GHz, but optimal at 1GHz. The SIP also included 512MB of LPDDR2 RAM. Refer to this expert [blog](https://www.jeffgeerling.com/blog/2021/look-inside-raspberry-pi-zero-2-w-and-rp3a0-au) who performed an X-Ray study of the SIP.
 
+# pylepton Error
 
+Issue with lepton capture function which was throwing error in program. 
+Issue traced back:
+    
+    ret = ioctl(handle, iow, xs_buf[xs_size * (60 - messages):], True)
 
+[Link to github issue solution](https://github.com/groupgets/pylepton/issues/52).
+Problem solves by reducing the message size of the library. Changed SPIDEV_MESSASGE_LIMIT from 24 to 8. Program now able to run, however, output images appeared to be flawed.
