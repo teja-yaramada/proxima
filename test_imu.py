@@ -2,6 +2,11 @@
 import time
 import board
 from adafruit_lsm6ds.ism330dhcx import ISM330DHCX
+from picamera2 import Picamera2
+
+picam = Picamera2()
+picam.start()
+picam.capture_file('picam_output.png')
 
 i2c = board.I2C()  # uses board.SCL and board.SDA
 # i2c = board.STEMMA_I2C()  # For using the built-in STEMMA QT connector on a microcontroller
