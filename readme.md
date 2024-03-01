@@ -131,3 +131,34 @@ Issue traced back:
 
 [Link to github issue solution](https://github.com/groupgets/pylepton/issues/52).
 Problem solves by reducing the message size of the library. Changed SPIDEV_MESSASGE_LIMIT from 24 to 8. Program now able to run, however, output images appeared to be flawed.
+
+
+
+
+# Parts
+
+1. EEMB LiPo battery 3.7v 820mAh capacity
+2. Powerboost 1000c to simultaneously charge as well as boost the power to 5V. Two charger LEDs. Amber LED when charger is On. 2nd LED turns Green when fully charged, Red when input voltage falls below 3.2v. Blue LED indicates the system is powering load.
+
+
+# Problem
+
+## `picamera2` not able to open `dmaHeap`
+
+    $ python test_picamera.py
+    [0:00:56.899856486] [643]  INFO Camera camera_manager.cpp:284 libcamera v0.2.0+4
+    [0:00:56.944885132] [648] ERROR RPI dma_heaps.cpp:53 Could not open any dmaHeap
+    [0:00:57.001074507] [648]  WARN RPiSdn sdn.cpp:39 Using legacy SDN tuning - plea
+    [0:00:57.006268361] [648] ERROR RPI vc4.cpp:216 Failed to register camera imx219
+    Traceback (most recent call last):
+    File "/home/pi/payload/proxima/test_picamera.py", line 3, in <module>
+        picam = Picamera2()
+                ^^^^^^^^^^^
+    File "/usr/lib/python3/dist-packages/picamera2/picamera2.py", line 242, in __i
+        camera_num = self.global_camera_info()[camera_num]['Num']
+                    ~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+    IndexError: list index out of range
+    Exception ignored in: <function Picamera2.__del__ at 0x666ccbb8>
+
+The above error showed up after using the picamera module for a while. Apparently it has to do with the permissions on `/dev/dmaHeap`. Following the instructions (here)[https://github.com/raspberrypi/rpicam-apps/issues/218] resolved it. 
+
