@@ -39,7 +39,8 @@ cv2.imwrite('ircam_output.png', image)
 
 picam = Picamera2()
 picam.start()
-picam.capture_file('/home/pi/payload/proxima/picam_output.png')
+#picam.capture_file('/home/pi/payload/proxima/picam_output.png')
+picam.capture_file('picam_output.png')
 # size = picam.sensor_resolution
 
 # if size[0] > 4096:
