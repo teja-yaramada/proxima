@@ -8,7 +8,7 @@ from picamera2 import Picamera2
 from pylepton.Lepton3 import Lepton3
 import cv2
 
-def capture_from_picam():
+def capture_from_picam(filename):
     picam2 = Picamera2()
     
     # Configure the camera
@@ -18,20 +18,21 @@ def capture_from_picam():
 
     # Capture an image
     picam2.start()
-    image = picam2.capture_array()
-    picam2.stop()
+    picam2.capture_file(filename)
+    #image = picam2.capture_array()
+    #picam2.stop()
 
     logging.info("picam2 image captured")
 
     # Convert the captured image to a format suitable for saving
     # This example converts it to a PIL Image, but you can adjust it as needed
-    from PIL import Image
-    captured_image = Image.fromarray(np.uint8(image)).convert('RGB')
+    #from PIL import Image
+    #captured_image = Image.fromarray(np.uint8(image)).convert('RGB')
 
-    return captured_image
+    return None
 
 # Placeholder functions for capturing images from FLIR and PiCamera
-def capture_from_flir():
+def capture_from_flir(filename):
     def centi_kelvins_to_celsius(kelvins):
       return (kelvins / 100) - 273
   
@@ -60,7 +61,9 @@ def capture_from_flir():
         np.right_shift(a, 8, a)
         return np.uint8(a)
     
-    return capture_and_convert()
+    image = capture_and_convert()
+    cv2.imwrite(filename, image)
+    return image
 
 # Function to create a directory for storing images
 def create_directory():
@@ -72,11 +75,11 @@ def create_directory():
 # Function for a thread to continuously capture images from a camera
 def capture_images(camera_name, capture_function, save_dir):
     while True:
-        image = capture_function()
         timestamp = datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
         filename = f"{save_dir}/{camera_name}_{timestamp}.jpg"
         # Save the image with the filename
-        image.save(filename)
+        #image.save(filename)
+        capture_function(filename)
         time.sleep(1)  # Adjust the sleep time as needed
 
 # Main function to start the threads
