@@ -139,6 +139,7 @@ Problem solves by reducing the message size of the library. Changed SPIDEV_MESSA
 
 1. EEMB LiPo battery 3.7v 820mAh capacity
 2. Powerboost 1000c to simultaneously charge as well as boost the power to 5V. Two charger LEDs. Amber LED when charger is On. 2nd LED turns Green when fully charged, Red when input voltage falls below 3.2v. Blue LED indicates the system is powering load.
+3. (PureThermal Breakout board)[https://groupgets.com/products/purethermal-breakout-board]
 
 
 # Problem
