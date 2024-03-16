@@ -7,6 +7,7 @@ from datetime import datetime
 from picamera2 import Picamera2
 from pylepton.Lepton3 import Lepton3
 import cv2
+import board
 from adafruit_lsm6ds.ism330dhcx import ISM330DHCX
 
 start_time = datetime.now()
@@ -106,7 +107,7 @@ def capture_position():
     sensor = ISM330DHCX(board.I2C())
     while True:
         x_acc, y_acc, z_acc = sensor.acceleration
-        acceleration = np.array([a_acc, y_acc, z_acc])
+        acceleration = np.array([x_acc, y_acc, z_acc])
         velocity = np.add(velcoity, acceleration * get_time_delta())
         position = np.add(position, velcoity * get_time_delta())
         logging.info("Acceleration: " + acceleration)
