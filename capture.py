@@ -11,7 +11,7 @@ import board
 from adafruit_lsm6ds.ism330dhcx import ISM330DHCX
 
 start_time = datetime.now()
-prev_time = start_time
+prev_time = time.time()
 velocity = np.array([0,0,0])
 position = np.array([0,0,0])
 
@@ -95,24 +95,27 @@ def capture_images(camera_name, capture_function, save_dir):
         time.sleep(0.1)  # Adjust the sleep time as needed
 
 def get_flight_time():
+    global start_time
     return datetime.now() - start_time
 
 def get_time_delta():
-    delta = get_flight_time() - prev_time
-    prev_time = get_flight_time()
+    global prev_time
+    current_time = time.time()
+    delta = current_time - prev_time
+    prev_time = current_time
     return delta
 
 def capture_position():
+    global velocity, position
     logging.info("IMU Logging Activated")
     sensor = ISM330DHCX(board.I2C())
     while True:
         x_acc, y_acc, z_acc = sensor.acceleration
         acceleration = np.array([x_acc, y_acc, z_acc])
         velocity = np.add(velocity, acceleration * get_time_delta())
-        position = np.add(position, velcoity * get_time_delta())
-        logging.info("Acceleration: " + acceleration)
-        logging.info("Velocity: " + velocity)
-        logging.info("Position: " + position)
+        position = np.add(position, velocity * get_time_delta())
+        logging.info("IMU Acceleration: {}, Velocity: {}, Position: {}".format(acceleration, velocity, position))
+        time.sleep(0.1)  # Adjust the sleep time as needed
   
 # Main function to start the threads
 def main():
