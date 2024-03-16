@@ -108,7 +108,7 @@ def capture_position():
     while True:
         x_acc, y_acc, z_acc = sensor.acceleration
         acceleration = np.array([x_acc, y_acc, z_acc])
-        velocity = np.add(velcoity, acceleration * get_time_delta())
+        velocity = np.add(velocity, acceleration * get_time_delta())
         position = np.add(position, velcoity * get_time_delta())
         logging.info("Acceleration: " + acceleration)
         logging.info("Velocity: " + velocity)
