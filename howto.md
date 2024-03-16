@@ -1,3 +1,78 @@
+# Prepare the SD Card from scratch
+
+This project used the `2023-12-11-raspios-bookworm-armhf-lite.img.xz` image from the raspberry organization. This is a light version, i.e no Windows or GUI. All the interactions with it are to be done from the Command Line interface (CLI) using Linux Shell.
+
+Used BalenaEtcher to program the image in to sdcard. To simplify the use from a Windows PC, as a headless board attached over USB, below instructions will make that possible.
+
+1. Re-insert the sdcard image in to USB drive of Windows PC. It should be able to see the `boot` partition which is a FAT32 filesystem. This partion contains the bootloader and additional instructions for it.
+
+2. Modify the `config.txt` to add under the `[all]` section on a newline `dtoverlay=dwc2`. This makes the OS load USB gadget.
+
+3. Modify the `cmdline.txt` file to append the `modules-load=dwc2,g_serial`. This will load the serial driver automatically on the USB gadget.
+
+# Building a custom Pi Image
+
+An attempt was made to build a tailored image using `pi-gen`
+
+## References
+
+* [`pi-gen`, an image generator for pi](https://github.com/RPi-Distro/pi-gen)
+* [Geoff Hodik's blog](https://geoffhudik.com/tech/2020/05/15/using-pi-gen-to-build-a-custom-raspbian-lite-image/)
+
+## Steps
+
+1. clone the `pi-gen`
+
+        git clone https://github.com/RPi-Distro/pi-gen.git
+        cd pi-gen
+
+2. create a sub-folder `stage2_proxima` and copy the couple of files there from `stage2`
+
+        cp stage2/EXPORT_IMAGE stage_proxima/
+        cp stage2/prerun.sh stage_proxima/
+
+Create a file at `stage_proxima/01-sys-tweaks/01-run.sh` with the below contents. This will activate a console login over USB.
+
+        #!/bin/bash -e
+
+        # Append to /boot/firmware/config.txt under the [all] section
+        echo "dtoverlay=dwc2" | tee -a "${ROOTFS_DIR}/boot/firmware/config.txt"
+
+        # Append to /boot/firmware/cmdline.txt after "rootwait", to activate serial gadget
+        sed -i 's/rootwait/rootwait modules-load=dwc2,g_serial/' "${ROOTFS_DIR}/boot/cmdline.txt"
+
+        # Enable the serial console login
+        on_chroot << EOF
+        systemctl enable getty@ttyGS0.service
+        EOF
+
+
+3. Config file as below:
+
+        IMG_NAME=proxima-raspios
+        RELEASE=bookworm
+        PI_GEN_RELEASE=proxima_sls
+        DEPLOY_COMPRESSION=xz
+        LOCALE_DEFAULT=en_US.UTF-8
+        KEYBOARD_KEYMAP=us
+        KEYBOARD_LAYOUT="English (US)"
+        TIMEZONE_DEFAULT=America/Los_Angeles
+        TARGET_HOSTNAME=proxima-zero
+        ENABLE_SSH=1
+        DISABLE_FIRST_USER_BOOT_USER_RENAME=1
+        FIRST_USER_NAME=pi
+        FIRST_USER_PASS=pi
+        WPA_COUNTRY=US
+        STAGE_LIST="stage0 stage1 stage2 stage_proxima"
+
+4. Build 
+
+        touch ./stage3/SKIP ./stage4/SKIP ./stage5/SKIP
+        touch ./stage2/SKIP_IMAGES ./stage2/SKIP_NOOBS ./stage4/SKIP_IMAGES ./stage5/SKIP_IMAGES
+        sudo ./build-docker.sh
+
+Resulting image under `deploy/image_2024-03-09-proxima-raspios-lite.img.xz` can be etched on the sd card.
+
 # Clone the SD Card images
 
 This activity is for cloning the RPI image from the `GOLD` card to `SILVER` card
@@ -66,24 +141,68 @@ Configured the `wlan0` using the `wpa_supplicant`. The service was disabled as w
 
 1. Enable the service
 
-    sudo systemctl enable wpa_supplicant@wlan0.service
+        sudo systemctl enable wpa_supplicant@wlan0.service
 
 2. Edit the configuration file here, if not present create one at that path
 
-    sudo nano /etc/wpa_supplicant/wpa_supplicant-wlan0.conf
+        sudo nano /etc/wpa_supplicant/wpa_supplicant-wlan0.conf
 
 3. Add the configuration for the WLAN access point. Make sure it is available in 2.4GHz
 
-    network={
-        ssid="WLAN_AP_NAME"
-        psk="password"
-        key_mgmt=WPA-PSK
-    }
+        network={
+            ssid="WLAN_AP_NAME"
+            psk="password"
+            key_mgmt=WPA-PSK
+        }
+
+    NOTE: To view the accesspoints `iwlist scanning | grep -iE "ESSID|Quality"`
 
 The files at the /var/run/wpa_supplicant/ were blocking the creation of service. Removed and restarted the board.
 
     sudo rm /var/run/wpa_supplicant/wlan0
     sudo rm /var/run/wpa_supplicant/p2p-dev-wlan0
 
-4. If your `wlan0` doesn't show the IP address, renew the IP with `dhclient wlan0`
+4. If your `wlan0` doesn't show the IP address, renew the IP with `sudo dhclient wlan0`
 
+# Enable Bluetooth
+
+The package `pi-bluetooth` appeared to have been installed. Checking the installed packages with `dpkg -l` shows the `bluez` and `bluez-firmware`.
+
+1. activate bluetooth service `sudo systemctl enable blueooth`.
+2. use `bluetoothctl` to pair with android phone. This runs in the interactive mode. Here is the screenshot
+
+
+        pi@proxima-zero:~$ bluetoothctl
+        Agent registered
+        [CHG] Controller B8:27:EB:E7:5A:75 Pairable: yes
+        [bluetooth]# help
+        Menu main:
+        Available commands:
+        -------------------
+        ...
+
+        [bluetooth]# discoverable on
+        Changing discoverable on succeeded
+        [CHG] Controller B8:27:EB:E7:5A:75 Discoverable: yes
+        [NEW] Device EC:7C:B6:D6:9E:2B Galaxy S21 5G
+        Request confirmation
+        [agent] Confirm passkey 368987 (yes/no): yes
+        [CHG] Device EC:7C:B6:D6:9E:2B Bonded: yes
+        [CHG] Device EC:7C:B6:D6:9E:2B Modalias: bluetooth:v0075p0100d0201
+        [CHG] Device EC:7C:B6:D6:9E:2B UUIDs: 00001105-0000-1000-8000-00805f9b34fb
+        [CHG] Device EC:7C:B6:D6:9E:2B UUIDs: 0000110a-0000-1000-8000-00805f9b34fb
+        [CHG] Device EC:7C:B6:D6:9E:2B UUIDs: 0000110c-0000-1000-8000-00805f9b34fb
+        [CHG] Device EC:7C:B6:D6:9E:2B UUIDs: 0000110e-0000-1000-8000-00805f9b34fb
+        [CHG] Device EC:7C:B6:D6:9E:2B UUIDs: 00001112-0000-1000-8000-00805f9b34fb
+        [CHG] Device EC:7C:B6:D6:9E:2B UUIDs: 00001115-0000-1000-8000-00805f9b34fb
+        [CHG] Device EC:7C:B6:D6:9E:2B UUIDs: 00001116-0000-1000-8000-00805f9b34fb
+        [CHG] Device EC:7C:B6:D6:9E:2B UUIDs: 0000111f-0000-1000-8000-00805f9b34fb
+        [CHG] Device EC:7C:B6:D6:9E:2B UUIDs: 0000112f-0000-1000-8000-00805f9b34fb
+        [CHG] Device EC:7C:B6:D6:9E:2B UUIDs: 00001132-0000-1000-8000-00805f9b34fb
+        [CHG] Device EC:7C:B6:D6:9E:2B UUIDs: 00001200-0000-1000-8000-00805f9b34fb
+        [CHG] Device EC:7C:B6:D6:9E:2B UUIDs: 00001800-0000-1000-8000-00805f9b34fb
+        [CHG] Device EC:7C:B6:D6:9E:2B UUIDs: 00001801-0000-1000-8000-00805f9b34fb
+        [CHG] Device EC:7C:B6:D6:9E:2B ServicesResolved: yes
+        [CHG] Device EC:7C:B6:D6:9E:2B Paired: yes
+
+3. Enable rfcomm, the virtual serial (UART style) port.
