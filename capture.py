@@ -1,3 +1,4 @@
+import sys
 import threading
 import os
 import time
@@ -25,7 +26,7 @@ def capture_from_picam(filename):
     # Configure the camera
     # picam2.start_preview()
     # Capture an image
-    logging.info("PICAM catpture start")
+    logging.info("PICAM capture start")
     picam2.start()
     logging.info(f"PICAM write to {filename}")
     picam2.capture_file(filename)
@@ -85,13 +86,15 @@ def create_directory():
 
 
 # Function for a thread to continuously capture images from a camera
-def capture_images(camera_name, capture_function, save_dir):
+def capture_images(camera_name, capture_function, save_dir, forever=True):
     while True:
         timestamp = datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
         filename = f"{save_dir}/{camera_name}_{timestamp}.jpg"
         # Save the image with the filename
         #image.save(filename)
         capture_function(filename)
+        if not forever:
+            break
         time.sleep(0.1)  # Adjust the sleep time as needed
 
 def get_flight_time():
@@ -105,9 +108,8 @@ def get_time_delta():
     prev_time = current_time
     return delta
 
-def capture_position():
+def capture_position(forever=True):
     global velocity, position
-    logging.info("IMU Logging Activated")
     sensor = ISM330DHCX(board.I2C())
     while True:
         x_acc, y_acc, z_acc = sensor.acceleration
@@ -115,18 +117,19 @@ def capture_position():
         velocity = np.add(velocity, acceleration * get_time_delta())
         position = np.add(position, velocity * get_time_delta())
         logging.info("IMU Acceleration: {}, Velocity: {}, Position: {}".format(acceleration, velocity, position))
-        time.sleep(0.1)  # Adjust the sleep time as needed
-  
-# Main function to start the threads
-def main():
-    save_dir = create_directory()
-    log_filename = os.path.join(save_dir, 'capture.log')
-    logging.basicConfig(filename=log_filename, level=logging.INFO,
-            format='%(asctime)s %(levelname)s: %(message)s')
+        if not forever:
+            break
+        time.sleep(0.02)  # Adjust the sleep time as needed
 
-    # logging.info("PICAM creation")
-    #picam2 = Picamera2()
+def sequential_run(save_dir):
+    logging.info("PROXIMA Sequential Run")
+    while True:
+        capture_images("flir", capture_from_flir, save_dir, False)
+        capture_images("picam", capture_from_picam, save_dir, False)
+        capture_position(False)
 
+def multi_threaded_run(save_dir):
+    logging.info("PROXIMA MultiThreaded Run")
     # Creating threads for FLIR, PiCamera and IMU
     flir_thread = threading.Thread(target=capture_images, args=("flir", capture_from_flir, save_dir))
     picam_thread = threading.Thread(target=capture_images, args=("picam", capture_from_picam, save_dir))
@@ -140,6 +143,18 @@ def main():
     flir_thread.join()
     picam_thread.join()
     imu_thread.join()
+
+# Main function to start the threads
+def main():
+    save_dir = create_directory()
+    log_filename = os.path.join(save_dir, 'capture.log')
+    logging.basicConfig(filename=log_filename, level=logging.INFO,
+            format='%(asctime)s %(levelname)s: %(message)s')
+
+    if int(sys.argv[1]) == 1:
+        sequential_run(save_dir)
+    else:
+        multi_threaded_run(save_dir)
 
 if __name__ == "__main__":
     main()
