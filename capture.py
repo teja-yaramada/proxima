@@ -11,10 +11,12 @@ import cv2
 import board
 from adafruit_lsm6ds.ism330dhcx import ISM330DHCX
 
-start_time = datetime.now()
+
 prev_time = time.time()
+acceleration_offset = np.asarray(ISM330DHCX(board.I2C()).acceleration)
 velocity = np.array([0,0,0])
 position = np.array([0,0,0])
+orientation = np.array([0,0,0])
 
 
 def capture_from_picam(filename):
@@ -83,6 +85,9 @@ def create_directory():
         os.makedirs(dir_name)
     return dir_name
 
+def create_file(dir_name):
+    file = open(dir_name + "/imu.txt", "x")
+    return file
 
 
 # Function for a thread to continuously capture images from a camera
@@ -97,10 +102,6 @@ def capture_images(camera_name, capture_function, save_dir, forever=True):
             break
         time.sleep(0.1)  # Adjust the sleep time as needed
 
-def get_flight_time():
-    global start_time
-    return datetime.now() - start_time
-
 def get_time_delta():
     global prev_time
     current_time = time.time()
@@ -108,32 +109,56 @@ def get_time_delta():
     prev_time = current_time
     return delta
 
-def capture_position(forever=True):
-    global velocity, position
+def log_file(file, message):
+    timestamp = datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
+    file.write(timestamp + ": " + message + "\n")
+
+def capture_position(file, forever=True):
+    global velocity, position, acceleration_offset
     sensor = ISM330DHCX(board.I2C())
     while True:
         x_acc, y_acc, z_acc = sensor.acceleration
-        acceleration = np.array([x_acc, y_acc, z_acc])
+        # acceleration = np.array([x_acc, y_acc, z_acc])
+        acceleration = np.subtract(np.asarray(sensor.acceleration), acceleration_offset)
+        # if(np.less_equal(acceleration, np.array([0.1, 0.1, 0.1])[0])):
+        #     break
         velocity = np.add(velocity, acceleration * get_time_delta())
         position = np.add(position, velocity * get_time_delta())
         logging.info("IMU Acceleration: {}, Velocity: {}, Position: {}".format(acceleration, velocity, position))
+        file.write(datetime.now().strftime("%Y-%m-%d-%H-%M-%S"))
+        file.write("::: IMU Acceleration: {}, Velocity: {}, Position: {} \n".format(acceleration, velocity, position))
         if not forever:
             break
         time.sleep(0.02)  # Adjust the sleep time as needed
 
-def sequential_run(save_dir):
+def capture_orientation(file, forever=True):
+    global orientation
+    sensor = ISM330DHCX(board.I2C())
+    while True:
+        x_vel, y_vel, z_vel = sensor.gyro
+        angular_velocity = np.array([x_vel, y_vel, z_vel])
+        orientation = np.add(orientation, angular_velocity * get_time_delta())
+        logging.info("IMU Angular Velocity: {}, Angle: {}".format(angular_velocity, orientation))
+        file.write(datetime.now().strftime("%Y-%m-%d-%H-%M-%S"))
+        file.write("::: IMU Angular Velocity: {}, Angle: {} \n".format(angular_velocity, orientation))
+        if not forever:
+            break
+        time.sleep(0.02)  # Adjust the sleep time as needed
+
+def sequential_run(save_dir, file):
     logging.info("PROXIMA Sequential Run")
     while True:
         capture_images("flir", capture_from_flir, save_dir, False)
         capture_images("picam", capture_from_picam, save_dir, False)
-        capture_position(False)
+        capture_position(file, False)
+        capture_orientation(file, False)
 
-def multi_threaded_run(save_dir):
+def multi_threaded_run(save_dir, file):
     logging.info("PROXIMA MultiThreaded Run")
     # Creating threads for FLIR, PiCamera and IMU
     flir_thread = threading.Thread(target=capture_images, args=("flir", capture_from_flir, save_dir))
     picam_thread = threading.Thread(target=capture_images, args=("picam", capture_from_picam, save_dir))
-    imu_thread = threading.Thread(target=capture_position, args=())
+    imu_thread = threading.Thread(target=capture_position, args=(file, False))
 
     # Starting the threads
     flir_thread.start()
@@ -147,14 +172,15 @@ def multi_threaded_run(save_dir):
 # Main function to start the threads
 def main():
     save_dir = create_directory()
+    file = create_file(save_dir)
     log_filename = os.path.join(save_dir, 'capture.log')
     logging.basicConfig(filename=log_filename, level=logging.INFO,
             format='%(asctime)s %(levelname)s: %(message)s')
 
     if int(sys.argv[1]) == 1:
-        sequential_run(save_dir)
+        sequential_run(save_dir, file)
     else:
-        multi_threaded_run(save_dir)
+        multi_threaded_run(save_dir, file)
 
 if __name__ == "__main__":
     main()

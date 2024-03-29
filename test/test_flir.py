@@ -10,7 +10,7 @@ def centi_kelvins_to_celsius(kelvins):
 
 def capture(flip_v = False, device = "/dev/spidev0.0"):
   with Lepton3(device) as l:
-    a,_ = l.capture()
+    a,_ = l.capture(debug_print=True)
   if flip_v:
     cv2.flip(a,0,a)
 
