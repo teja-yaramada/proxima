@@ -1,0 +1,14 @@
+[Unit]
+Description=Proxima Sensor Data Collection
+After=multi-user.target  # Starts after basic multi-user environment is up
+Requires=basic.target  # Ensures basic system functionality is present
+
+[Service]
+ExecStart=/home/pi2/payload/proxima/startup.sh
+Restart=on-failure  # Restarts the service if it fails
+StandardOutput=syslog  # Redirects output to syslog
+StandardError=syslog  # Redirects error to syslog
+
+[Install]
+WantedBy=multi-user.target  # Ensures the service is started in multi-user mode
+
