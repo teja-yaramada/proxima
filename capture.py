@@ -11,10 +11,10 @@ import cv2
 import board
 from adafruit_lsm6ds.ism330dhcx import ISM330DHCX
 
-start_time = datetime.now()
 prev_time = time.time()
-velocity = np.array([0,0,0])
-position = np.array([0,0,0])
+imu = ISM330DHCX(board.I2C())
+acceleration_offset = np.asarray(imu.acceleration)
+angular_velocity_offset = np.asarray(imu.gyro)
 
 
 def capture_from_picam(filename):
@@ -109,14 +109,16 @@ def get_time_delta():
     return delta
 
 def capture_position(forever=True):
-    global velocity, position
-    sensor = ISM330DHCX(board.I2C())
+    global imu, acceleration_offset, angular_velocity_offset
     while True:
-        x_acc, y_acc, z_acc = sensor.acceleration
-        acceleration = np.array([x_acc, y_acc, z_acc])
-        velocity = np.add(velocity, acceleration * get_time_delta())
-        position = np.add(position, velocity * get_time_delta())
-        logging.info("IMU Acceleration: {}, Velocity: {}, Position: {}".format(acceleration, velocity, position))
+        # x_acc, y_acc, z_acc = sensor.acceleration
+        # acceleration = np.array([x_acc, y_acc, z_acc])
+        # velocity = np.add(velocity, acceleration * get_time_delta())
+        # position = np.add(position, velocity * get_time_delta())
+        # logging.info("IMU Acceleration: {}, Velocity: {}, Position: {}".format(acceleration, velocity, position))
+        acceleration = np.subtract(np.asarray(imu.acceleration), acceleration_offset)
+        angular_velocity = np.subtract(np.asarray(imu.gyro), angular_velocity_offset)
+        logging.info("IMU Acceleration: {}, IMU Angular Velocity: {}".format(acceleration, angular_velocity))
         if not forever:
             break
         time.sleep(0.02)  # Adjust the sleep time as needed
