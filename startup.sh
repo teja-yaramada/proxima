@@ -30,7 +30,7 @@ CPU_CORE_PICAMERA=3
 
 # Start the capture script on the assigned core
 if [ -f "picamera_capture.py" ]; then
-    taskset -c $CPU_CORE_PICAMERA python3 picamera_capture.py
+    taskset -c $CPU_CORE_PICAMERA python3 picamera_capture.py &
     logger "Proxima Service: Launched picamera_capture.py on CPU core $CPU_CORE_PICAMERA."
 else
     logger "Proxima Service: picamera_capture.py not found in the current directory. Exiting."
