@@ -155,7 +155,7 @@ Configured the `wlan0` using the `wpa_supplicant`. The service was disabled as w
             key_mgmt=WPA-PSK
         }
 
-    NOTE: To view the accesspoints `iwlist scanning | grep -iE "ESSID|Quality"`
+    NOTE: To view the accesspoints `sudo iwlist wlan0 scanning | grep -iE "ESSID|Quality"`
 
 The files at the /var/run/wpa_supplicant/ were blocking the creation of service. Removed and restarted the board.
 
@@ -206,3 +206,85 @@ The package `pi-bluetooth` appeared to have been installed. Checking the install
         [CHG] Device EC:7C:B6:D6:9E:2B Paired: yes
 
 3. Enable rfcomm, the virtual serial (UART style) port.
+
+# Date/Time synchronized
+
+PiZero doesn't have the backup battery to keep the time ticking while disconnected from power supply. Hence we shall install the `ntpdate` to synchronize whenever we need to.
+
+Install the package with `sudo apt-get -y install ntpdate`. Now run this command to catchup date and time.
+
+    sudo ntpdate pool.ntp.org
+
+However it also appears the background service in `systemd` is performing the timesync, perhaps when ntpdate is available. Be mindful that this may cause a sudden jump in the time.
+
+    pi2@proxima-zero:~/payload/proxima
+    $ systemctl status ntpdate
+    Unit ntpdate.service could not be found.
+    pi2@proxima-zero:~/payload/proxima
+    $ sudo systemctl status systemd-timesyncd
+    ? systemd-timesyncd.service - Network Time Synchronization
+        Loaded: loaded (/lib/systemd/system/systemd-timesyncd.service; enabled; preset: enabled)
+        Active: active (running) since Sat 2024-04-06 14:26:02 PDT; 2 weeks 6 days ago
+        Docs: man:systemd-timesyncd.service(8)
+    Main PID: 388 (systemd-timesyn)
+        Status: "Contacted time server 72.30.35.88:123 (0.debian.pool.ntp.org)."
+        Tasks: 2 (limit: 383)
+            CPU: 591ms
+        CGroup: /system.slice/systemd-timesyncd.service
+                mq388 /lib/systemd/systemd-timesyncd
+
+    Apr 06 14:26:01 proxima-zero systemd[1]: Starting systemd-timesyncd.service - Network Time Synchronization...
+    Apr 06 14:26:02 proxima-zero systemd[1]: Started systemd-timesyncd.service - Network Time Synchronization.
+    Apr 26 14:30:34 proxima-zero systemd-timesyncd[388]: Contacted time server 129.250.35.250:123 (2.debian.pool.ntp.org).
+    Apr 26 14:30:34 proxima-zero systemd-timesyncd[388]: Initial clock synchronization to Fri 2024-04-26 14:30:34.141477 PDT.
+    Apr 26 14:31:52 proxima-zero systemd-timesyncd[388]: Timed out waiting for reply from 129.250.35.250:123 (2.debian.pool.ntp.org).
+    Apr 26 14:32:02 proxima-zero systemd-timesyncd[388]: Timed out waiting for reply from 50.205.57.38:123 (2.debian.pool.ntp.org).
+    Apr 26 14:32:12 proxima-zero systemd-timesyncd[388]: Timed out waiting for reply from 152.70.159.102:123 (2.debian.pool.ntp.org).
+    Apr 26 14:32:22 proxima-zero systemd-timesyncd[388]: Timed out waiting for reply from 44.190.40.123:123 (2.debian.pool.ntp.org).
+    Apr 26 14:34:30 proxima-zero systemd-timesyncd[388]: Contacted time server 72.30.35.88:123 (0.debian.pool.ntp.org).
+
+# Auto start program
+
+We would like to auto start the sensor capturing program up on boot up. This is so the device if it encounters a fault and possibly restarts, then the device will kickoff the captures immediately.
+
+For this we established a Systemd Unit File at `/etc/systemd/system/proxima.service`. This unit file has these contents.
+
+    $ sudo vi /etc/systemd/system/proxima.service
+
+    [Unit]
+    Description=Proxima Sensor Data Collection
+    After=multi-user.target
+    Requires=basic.target
+
+    [Service]
+    ExecStart=/home/pi2/payload/proxima/startup.sh
+    Restart=on-failure
+    StandardOutput=journal
+    StandardError=jounal
+
+    [Install]
+    WantedBy=multi-user.target  # Ensures the service is started in multi-user mode
+
+This basically invokes the shell script located at the `/home/pi2/payload/proxima/startup.sh`. This gives us the flexibility to add what ever to be started from here.
+
+Enable and start the service.
+
+    sudo systemctl enable proxima.service
+    sudo systemctl start proxima.service
+
+## Verify the auto start
+
+Verify the script has been invoked in the current boot with `journalctl -u proxima.service`
+
+    journalctl -u proxima.service -n 50
+
+Show the last 50 messages from proxima service. Here is an example:
+
+    pi2@proxima-zero:~
+    $ journalctl -u proxima.service -n 50
+    Apr 26 16:17:22 proxima-zero systemd[1]: /etc/systemd/system/proxima.service:9: Standard output type syslog is obsolete, automatically updating to journal. Please update your >
+    Apr 26 16:17:22 proxima-zero systemd[1]: /etc/systemd/system/proxima.service:10: Standard output type syslog is obsolete, automatically updating to journal. Please update your>
+    Apr 26 16:22:07 proxima-zero systemd[1]: Started proxima.service - Proxima Sensor Data Collection.
+    Apr 26 16:22:07 proxima-zero root[1095]: Proxima Service: Starting sensor data collection...
+    Apr 26 16:22:07 proxima-zero systemd[1]: proxima.service: Deactivated successfully.
+
