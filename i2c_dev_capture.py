@@ -16,7 +16,7 @@ angular_velocity_offset = np.asarray(imu.gyro)
 
 def capture_flir_images(save_dir):
     timestamp = datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
-    filename = f"{save_dir}/{camera_name}_{timestamp}.jpg"
+    filename = f"{save_dir}/flir_{timestamp}.jpg"
 
     def cK_to_C(kelvins):
       return (kelvins / 100) - 273
@@ -60,6 +60,8 @@ def capture_imu_data(save_dir):
     imu_log.write(datetime.now().strftime("%Y-%m-%d-%H-%M-%S"))
     imu_log.write("::: IMU Acceleration: {}, IMU Angular Velocity: {} \n".format(acceleration, angular_velocity))
 
+    time.sleep(0.2)
+
     return "::: IMU Acceleration: {}, IMU Angular Velocity: {} \n".format(acceleration, angular_velocity)
 
 def create_directory():
@@ -69,22 +71,25 @@ def create_directory():
     return dir_name
 
 def main():
-    func_list = []
+    #func_list = [capture_flir_images, capture_imu_data]
+    func_list = [capture_imu_data]
 
+    '''
     # Check if the flir argument is supplied and append flir capture functionality if true
-    if  'flir' in sys.argv
+    if  'flir' in sys.argv:
         print("FLIR Functionality Added")
-        func_list.append('capture_flir_images')
+        func_list.append(capture_flir_images)
 
     # Check is the imu argument is supplied and append imu capture functionality if true
     if 'imu' in sys.argv:
         print("IMU Functionality Added")
-        func_list.append('capture_imu_data')
+        func_list.append(capture_imu_data)
     
     # Terminate program is no arguments are supplied or functionalities added
     if len(func_list) < 1:
         print("No program functionality selected and executing self termination")
         sys.exit(0)
+    '''
 
     # Create file data directory and configure logging 
     save_dir = create_directory()

@@ -21,6 +21,10 @@ if [ -f "proxima_flircamera.pid" ]; then
     kill "$(cat proxima_flircamera.pid)" && logger "Proxima Service: Stopped flir_capture process."
     rm "proxima_flircamera.pid"
 fi
+if [ -f "proxima_imu.pid" ]; then
+    kill "$(cat proxima_imu.pid)" && logger "Proxima Service: Stopped flir_capture process."
+    rm "proxima_imu.pid"
+fi
 
 # Check if 'stop' parameter is provided
 if [ "$1" == "stop" ]; then
@@ -44,6 +48,7 @@ logger "Proxima Service: Starting sensor data collection..."
 # Identify the CPU core assignments
 CPU_CORE_PICAMERA=3
 CPU_CORE_FLIRCAMERA=2
+CPU_CORE_IMU=1
 
 # Validate CPU core assignments
 MAX_CPU_CORE=3  # Modify based on the system's CPU cores
@@ -84,3 +89,6 @@ start_script_on_core "picamera_capture.py" "$CPU_CORE_PICAMERA" "proxima_picamer
 
 # Start the flir_capture script and record the PID
 start_script_on_core "flir_capture.py" "$CPU_CORE_FLIRCAMERA" "proxima_flircamera.pid"
+
+# Start the imu_capture script and record the PID
+start_script_on_core "i2c_dev_capture.py" "$CPU_CORE_IMU" "proxima_imu.pid"
