@@ -70,7 +70,7 @@ def main():
         logging.basicConfig(filename=log_filename, level=logging.INFO, format='%(asctime)s %(levelname)s: %(message)s')
 
         logging.info("Starting FLIR image capture process")
-        capture_images("flir", save_dir, False)
+        capture_images("flir", save_dir)
     except Exception as e:
         logging.error(f"Error in main function: {e}")
 
