@@ -15,15 +15,15 @@ logger "Proxima Service: Successfully changed to $PROXIMA_DIR."
 # Stop processes based on PID files
 if [ -f "proxima_picamera.pid" ]; then
     kill "$(cat proxima_picamera.pid)" && logger "Proxima Service: Stopped picamera_capture process."
-    rm "proxima_picamera.pid"
+    rm -f "proxima_picamera.pid"
 fi
 if [ -f "proxima_flircamera.pid" ]; then
     kill "$(cat proxima_flircamera.pid)" && logger "Proxima Service: Stopped flir_capture process."
-    rm "proxima_flircamera.pid"
+    rm -f "proxima_flircamera.pid"
 fi
 if [ -f "proxima_imu.pid" ]; then
     kill "$(cat proxima_imu.pid)" && logger "Proxima Service: Stopped flir_capture process."
-    rm "proxima_imu.pid"
+    rm -f "proxima_imu.pid"
 fi
 
 # Check if 'stop' parameter is provided
